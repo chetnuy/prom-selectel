@@ -1,0 +1,13 @@
+## Устанавливаем/обновлем сервер prometheus
+- hosts: server:node
+  roles:
+    - { role: ../roles/init}
+
+- hosts: server
+  roles:
+    - { role: ../roles/cert-gen }
+    - { role: ../roles/prometheus}
+
+- hosts: server:node
+  roles:
+    - { role: ../roles/sd-node  }

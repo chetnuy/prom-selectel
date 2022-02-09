@@ -1,0 +1,7 @@
+---
+- targets:
+  {% for host in groups['node'] %}
+- {{ hostvars[host]['ansible_facts']['hostname'] }}:{{ node_exporter_port }}
+  {% endfor %}
+labels:
+    job: node

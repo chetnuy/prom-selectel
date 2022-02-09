@@ -1,0 +1,19 @@
+---
+- name: Set timezone to Europe/Moscow
+  community.general.timezone:
+      name: Europe/Moscow
+
+- name: Generate /etc/hosts
+  blockinfile:
+    backup: yes
+    path: /etc/hosts
+    block: |
+      {% for host in groups['type_openstack_compute_instance_v2'] %} 
+      {{ hostvars[host]['ansible_facts']['eth0']['ipv4']['address'] }}  {{ hostvars[host]['ansible_facts']['hostname'] }}
+      {% endfor %}
+
+- name: Install crypto for generate cert
+  apt:
+    name: python3-cryptography
+    state: present
+    update_cache: yes

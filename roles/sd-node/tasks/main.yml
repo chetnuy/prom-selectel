@@ -1,0 +1,15 @@
+---
+- name: Generate service discovery file
+  template: 
+    src: node.yml.j2
+    dest: "{{ sd_file }}"
+  run_once: true
+  delegate_to: "{{ groups['server'][0] }}"
+
+- name: Prometheus service adress
+  run_once: true
+  ansible.builtin.debug:
+    msg: 
+      - "https://{{ groups['server_fip'][0] }}:{{ prometheus_web_listen_port }}"
+      - "username/password"
+      - "{{ prometheus_username_password_msg }}"

@@ -1,0 +1,3 @@
+---
+path_tls: "/etc/tls"
+valid_cert: "+365d"

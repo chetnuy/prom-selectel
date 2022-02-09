@@ -1,0 +1,4 @@
+## Добавляем/удаляем ноду из списка service discovery
+- hosts: server:node
+  roles:
+    - { role: ../roles/sd-node  }

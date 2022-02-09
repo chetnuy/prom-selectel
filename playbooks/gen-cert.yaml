@@ -1,0 +1,4 @@
+## Генерируем/обновляем сертификаты
+- hosts: server:node
+  roles:
+    - { role: ../roles/cert-gen }

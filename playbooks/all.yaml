@@ -1,0 +1,29 @@
+## Общая роль для инита вм
+- hosts: server:node
+  roles:
+    - { role: ../roles/init}
+
+## Генерируем сертификаты
+- hosts: server:node
+  roles:
+    - { role: ../roles/cert-gen  }
+
+## Устанавливаем сервер
+- hosts: server
+  roles:
+    - { role: ../roles/prometheus}
+
+## Устанавливаем ноды
+- hosts: node
+  roles:
+    - { role: ../roles/node-exporter }
+
+## Устанавливаем docker
+- hosts: node
+  roles:
+    - { role: ../roles/docker }
+
+## Добавляем ноду в файл service discovery
+- hosts: server
+  roles:
+    - { role: ../roles/sd-node }

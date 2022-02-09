@@ -1,0 +1,14 @@
+## Добавить/обновить/удалить ноды
+- hosts: server:node
+  roles:
+    - { role: ../roles/init }
+    - { role: ../roles/cert-gen  }
+
+- hosts: node
+  roles:
+    - { role: ../roles/node-exporter }
+    - { role: ../roles/docker }
+
+- hosts: server
+  roles:
+    - { role: ../roles/sd-node }

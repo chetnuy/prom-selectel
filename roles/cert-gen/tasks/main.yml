@@ -1,0 +1,87 @@
+- name: Creates certs directory
+  file:
+    path: "{{ path_tls }}"
+    state: directory
+
+#### Генерируем корневой сертификат если его нет
+- block:
+    - name: Check existing CA
+      stat:
+        path: "{{ path_tls }}/ca.key"
+      register: certs_ca
+
+    - name: Create private key with password protection
+      community.crypto.openssl_privatekey:
+        path: "{{ path_tls }}/ca.key"
+      when: not certs_ca.stat.exists
+
+    - name: Create certificate signing request (CSR) for CA certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{ path_tls }}/ca.key"
+        common_name: Prometheus CA
+        use_common_name_for_san: false # since we do not specify SANs, don't use CN as a SAN
+        subject_alt_name:
+          - "DNS:{{ ansible_facts['nodename'] }}"
+        basic_constraints:
+          - 'CA:TRUE'
+      register: ca_csr
+      when: not certs_ca.stat.exists
+
+    - name: Create self-signed CA certificate from CSR
+      community.crypto.x509_certificate:
+        path: "{{ path_tls }}/ca.crt"
+        csr_content: "{{ ca_csr.csr }}"
+        privatekey_path: "{{ path_tls }}/ca.key"
+        provider: selfsigned
+      when: not certs_ca.stat.exists
+
+  delegate_to: "{{ groups['server'][0] }}"
+  run_once: true
+
+
+#### Генерируем сертификаты для узлов
+- block:
+  - name: Create private key for new certificate on vm
+    community.crypto.openssl_privatekey:
+      path: "{{ path_tls }}/node.key"
+  
+  - name: Create certificate signing request (CSR) for new certificate
+    community.crypto.openssl_csr_pipe:
+      privatekey_path: "{{ path_tls }}/node.key"
+      # Для сервера генерим сертификат для localhost
+      common_name: "{% if inventory_hostname in groups['server'] %}localhost{% else %}{{ ansible_facts['nodename'] }}{% endif %}"
+      subject_alt_name:
+        - "{% if inventory_hostname in groups['server'] %}DNS:localhost{% else %}DNS:{{ ansible_facts['nodename'] }}{% endif %}"
+    register: csr
+  
+  - name: Sign certificate with our CA
+    community.crypto.x509_certificate_pipe:
+      csr_content: "{{ csr.csr }}"
+      provider: ownca
+      ownca_path: "{{ path_tls }}/ca.crt"
+      ownca_privatekey_path: "{{ path_tls }}/ca.key"
+      ownca_not_after: "{{ valid_cert }}"
+      ownca_not_before: "-1d" # valid since yesterday
+    register: certificate
+    delegate_to: "{{ groups['server'][0] }}"
+
+  - name: Write certificate file on vm
+    copy:
+      dest: "{{ path_tls }}/node.crt"
+      content: "{{ certificate.certificate }}"
+
+  - name: Folder permission
+    file: "dest={{path_tls}} owner=root group=root mode=u=rwX,g=rX,o=rX recurse=yes"
+
+
+#### Перезапускаем службы мониторинга если они есть 
+- name: Populate service facts
+  service_facts:
+
+- name: Restart node_exporter
+  service: name=node_exporter.service state=restarted
+  when: "'node_exporter.service' in services"
+
+- name: Restart prometheus
+  service: name=prometheus.service state=restarted
+  when: "'prometheus.service' in services"
